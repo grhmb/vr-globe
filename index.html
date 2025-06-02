@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <title>VR Globe Viewer</title>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <style>
+      body { margin: 0; }
+      #fade { position: absolute; width: 100%; height: 100%; background: black; opacity: 1; transition: opacity 2s; pointer-events: none; z-index: 9999; }
+    </style>
+  </head>
+  <body>
+    <div id="fade"></div>
+    <a-scene id="scene" background="color: black" xr-mode-ui="enabled: true">
+
+      <!-- Globe with switchable textures -->
+      <a-sphere id="globe" radius="5"
+                material="src: #realistic; opacity: 0.6; transparent: true; side: double"
+                position="0 0 0">
+      </a-sphere>
+
+      <!-- Map Plane for Location Selection -->
+      <a-plane id="map" position="0 2 -4" width="4" height="2"
+               src="#mercatorMap" material="shader: flat"
+               class="clickable">
+      </a-plane>
+
+      <!-- Texture Switch Button -->
+      <a-box id="toggleTexture" position="2 1.5 -3" depth="0.1" height="0.5" width="1"
+             color="#FFC65D" class="clickable" text="value: Toggle Texture; align: center;">
+      </a-box>
+
+      <!-- Camera -->
+      <a-entity id="cameraRig" position="0 0 0">
+        <a-camera look-controls wasd-controls-enabled="false"></a-camera>
+      </a-entity>
+
+      <!-- Assets -->
+      <a-assets>
+        <img id="realistic" src="assets/earth-real.jpg">
+        <img id="classroom" src="assets/earth-classroom.jpg">
+        <img id="mercatorMap" src="https://upload.wikimedia.org/wikipedia/commons/8/80/World_map_-_low_resolution.svg">
+      </a-assets>
+    </a-scene>
+
+    <script>
+      // Fade in effect
+      window.addEventListener("load", () => {
+        document.getElementById("fade").style.opacity = 0;
+      });
+
+      const globe = document.getElementById("globe");
+      const toggle = document.getElementById("toggleTexture");
+      let currentTexture = "realistic";
+
+      toggle.addEventListener("click", () => {
+        currentTexture = currentTexture === "realistic" ? "classroom" : "realistic";
+        globe.setAttribute("material", "src", "#" + currentTexture);
+      });
+
+      const cameraRig = document.getElementById("cameraRig");
+      const map = document.getElementById("map");
+
+      map.addEventListener("click", (evt) => {
+        const intersection = evt.detail.intersection;
+        if (!intersection) return;
+
+        const uv = intersection.uv;
+        const lon = (uv.x - 0.5) * 360;
+        const lat = (0.5 - uv.y) * 180;
+
+        const pos = latLonToXYZ(lat, lon, 5.01); // just above globe
+        const target = latLonToXYZ(lat, lon, 10); // for horizon-like look
+
+        cameraRig.setAttribute("position", `${pos.x} ${pos.y} ${pos.z}`);
+
+        // Look towards horizon direction
+        cameraRig.object3D.lookAt(target.x, target.y, target.z);
+      });
+
+      function latLonToXYZ(lat, lon, radius) {
+        const phi = (90 - lat) * Math.PI / 180;
+        const theta = (lon + 180) * Math.PI / 180;
+
+        const x = -radius * Math.sin(phi) * Math.cos(theta);
+        const z = radius * Math.sin(phi) * Math.sin(theta);
+        const y = radius * Math.cos(phi);
+
+        return { x, y, z };
+      }
+    </script>
+  </body>
+</html>
